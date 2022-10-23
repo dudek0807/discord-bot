@@ -1,4 +1,3 @@
-from cmath import isnan
 from discord import Member, Embed
 from discord.ext.commands import Cog, command
 from random import choice, randint
@@ -8,7 +7,7 @@ class Fun(Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @command(name="hello", aliases=["hi"], hidden=True)
+    @command(name="hello", aliases=["hi"])
     async def say_hello(self, ctx):
         await ctx.send(f"{choice(('Hello', 'Hi', 'Sup', 'Hey'))} {ctx.author.mention}!")
 
@@ -26,29 +25,33 @@ class Fun(Cog):
 
     @command(name="animu")
     async def animu(self, ctx, action: str):
-        match action:
-            case "hug":
-                URL = "https://some-random-api.ml/animu/hug"
-            case "facepalm":
-                URL = "https://some-random-api.ml/animu/face-palm"
-            case "pat":
-                URL = "https://some-random-api.ml/animu/pat"
-            case "wink":
-                URL = "https://some-random-api.ml/animu/wink"
-            case _:
-                URL = "Nothing to see here"
-        print(URL)
-        if URL.startswith("Nothing"):
-            await ctx.send("Nothing to see here")
-            return
+        if action.lower() in ("hug", "face-palm", "pat", "wink", "quote"):
+            URL = f"https://some-random-api.ml/animu/{action.lower()}"
+            
+            async with request("GET", URL, headers={}) as response:
+                if response.status == 200:
+                    data = await response.json()
 
-        async with request("GET", URL, headers={}) as response:
+                    if action.lower() == "quote":
+                        embed = Embed(title=f"{data['anime']} quote",
+                        description=data["sentence"])
+                        embed.set_author(name=data["character"])
+                        await ctx.send(embed=embed)
+                    else:
+                        await ctx.send(data["link"])
+                else:
+                    await ctx.send(f"API returned a {response.status} status")
+
+    @command(name="joke")
+    async def joke(self, ctx):
+        URL = "https://some-random-api.ml/others/joke"
+        async with request("GET", URL) as response:
             if response.status == 200:
                 data = await response.json()
-                await ctx.send(data["link"])
+
+                await ctx.send(data["joke"])
             else:
                 await ctx.send(f"API returned a {response.status} status")
-
     @Cog.listener()
     async def on_ready(self):
         if not self.bot.ready:
